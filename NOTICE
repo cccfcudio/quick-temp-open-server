@@ -1,0 +1,22 @@
+Quick Temp Open Server
+Copyright 2026 Quick Temp Open Server contributors
+
+This product includes cloudflared
+https://github.com/cloudflare/cloudflared
+Copyright Cloudflare, Inc.
+Licensed under the Apache License, Version 2.0.
+
+The Android package does not ship Cloudflare's official linux-arm64 release.
+That binary is a non-PIE ET_EXEC, which Android refuses to execute. Quick Temp Open Server
+rebuilds the tag recorded in third_party/CLOUDFLARED_VERSION with:
+
+    CGO_ENABLED=0 GOOS=android GOARCH=arm64 go build -trimpath -buildmode=pie
+
+For that build only, third_party/android_dns.go is copied to
+cmd/cloudflared/android_dns.go. It points the Go resolver at public DNS
+servers because Android has no usable /etc/resolv.conf. It is not an upstream
+cloudflared change.
+
+Try Cloudflare Quick Tunnels (https://*.trycloudflare.com) are for testing and
+development. They are not named Cloudflare Tunnels and are not a production
+hosting service.

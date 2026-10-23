@@ -1,0 +1,19 @@
+cloudflared
+Copyright Cloudflare, Inc.
+Apache License, Version 2.0
+https://github.com/cloudflare/cloudflared
+
+快速臨時開放伺服器重新散佈嘅 cloudflared 唔係官方 linux-arm64 發行檔。官方嗰個係 non-PIE
+可執行檔，Android 唔會運行。呢個套件用下面嘅方式，由 third_party/CLOUDFLARED_VERSION
+記錄嘅 tag 重新編譯：
+
+    CGO_ENABLED=0 GOOS=android GOARCH=arm64 go build -trimpath -buildmode=pie
+
+編譯時會把 third_party/android_dns.go 複製去 cmd/cloudflared/android_dns.go。
+Android 冇可用嘅 /etc/resolv.conf，呢段程式把 Go DNS 指去公開解析器。
+呢個唔係 upstream cloudflared 嘅改動。
+
+Try Cloudflare Quick Tunnel（*.trycloudflare.com）只係測試同開發用。
+每次網址都會變，唔係具名隧道，亦唔好當成正式對外服務。
+
+完整授權條文見同目錄 Apache-2.0.txt。

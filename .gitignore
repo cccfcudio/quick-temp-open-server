@@ -1,0 +1,18 @@
+.gradle/
+.idea/
+.kotlin/
+local.properties
+**/build/
+captures/
+*.iml
+.DS_Store
+*.log
+
+# Rebuilt from upstream at build time. See scripts/build-cloudflared-android.sh.
+third_party/cloudflared-src/
+app/src/main/jniLibs/**/*.so
+app/src/main/assets/cloudflared-build.txt
+
+# Debug APK is copied to artifacts/ for the drop, not kept in git.
+artifacts/*.apk
+releases/
