@@ -28,6 +28,7 @@ import java.util.concurrent.TimeUnit
 class ShareHttpServer(
     private val store: FileStore,
     private val password: () -> String = { "" },
+    private val username: () -> String = { ShareDefaults.USERNAME },
     private val bindHost: String = "0.0.0.0",
     private val requestedPort: Int = ShareDefaults.PORT,
     private val log: (String) -> Unit = {},
@@ -43,7 +44,7 @@ class ShareHttpServer(
     private var serverSocket: ServerSocket? = null
     private var acceptThread: Thread? = null
     private val sessions = SessionStore()
-    private val guard = AccessGuard(password, sessions)
+    private val guard = AccessGuard(password, username, sessions)
     private val workers = Executors.newFixedThreadPool(8) { runnable ->
         Thread(runnable, "openshelf-http").apply { isDaemon = true }
     }
@@ -144,7 +145,7 @@ class ShareHttpServer(
             request.path == "/healthz" && (request.method == "GET" || head) ->
                 reply.send(200, """{"ok":true}""".toByteArray(Charsets.UTF_8), JSON, headOnly = head)
             request.path == "/login" && (request.method == "GET" || head) ->
-                reply.send(200, loginPage(request.query["next"]).toByteArray(Charsets.UTF_8), HTML, htmlHeaders(), head)
+                reply.send(200, loginPage(request.query["next"], username = authUsername()).toByteArray(Charsets.UTF_8), HTML, htmlHeaders(), head)
             request.path == "/login" && request.method == "POST" -> login(reply, request)
             request.path == "/" && (request.method == "GET" || head) ->
                 reply.send(200, homePage(store).toByteArray(Charsets.UTF_8), HTML, htmlHeaders(), head)
@@ -170,7 +171,7 @@ class ShareHttpServer(
         val expected = password()
         val given = form["password"] ?: ""
         if (expected.isNotEmpty() && !Token.constantEquals(expected, given)) {
-            reply.send(401, loginPage(next, failed = true).toByteArray(Charsets.UTF_8), HTML, listOf(BASIC) + htmlHeaders())
+            reply.send(401, loginPage(next, failed = true, username = authUsername()).toByteArray(Charsets.UTF_8), HTML, listOf(BASIC) + htmlHeaders())
             return
         }
         val token = sessions.issue()
@@ -500,7 +501,7 @@ class ShareHttpServer(
             !request.path.startsWith("/raw/") &&
             !request.path.startsWith("/dav")
         if (browser) {
-            reply.send(401, loginPage(request.path).toByteArray(Charsets.UTF_8), HTML, listOf(BASIC) + htmlHeaders())
+            reply.send(401, loginPage(request.path, username = authUsername()).toByteArray(Charsets.UTF_8), HTML, listOf(BASIC) + htmlHeaders())
         } else {
             reply.send(401, "需要密碼".toByteArray(Charsets.UTF_8), TEXT, listOf(BASIC))
         }
@@ -569,6 +570,10 @@ class ShareHttpServer(
                 throw StoreException(413, "總大小超過上限")
             }
         }
+    }
+
+    private fun authUsername(): String {
+        return username().ifBlank { ShareDefaults.USERNAME }
     }
 
     private companion object {

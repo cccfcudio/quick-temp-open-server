@@ -54,6 +54,7 @@ sealed interface BrowserLoad {
 class ShelfViewModel(app: Application) : AndroidViewModel(app) {
     private val prefs = (app as OpenShelfApp).prefs
     val mounts = prefs.mounts
+    val username = prefs.username
     val password = prefs.password
     val port = prefs.port
     val share = ShareHub.state
@@ -79,6 +80,9 @@ class ShelfViewModel(app: Application) : AndroidViewModel(app) {
     private val pageState = MutableStateFlow(1)
     val page: StateFlow<Int> = pageState.asStateFlow()
 
+    private val updateState = MutableStateFlow<UpdateStatus>(UpdateStatus.Checking)
+    val updateStatus: StateFlow<UpdateStatus> = updateState.asStateFlow()
+
     val zip: StateFlow<ZipPhase> = ZipHub.phase
     val download: StateFlow<DownloadPhase> = DownloadHub.phase
 
@@ -89,9 +93,26 @@ class ShelfViewModel(app: Application) : AndroidViewModel(app) {
         messageState.value = null
     }
 
+    init {
+        checkForUpdates()
+    }
+
+    fun checkForUpdates() {
+        updateState.value = UpdateStatus.Checking
+        viewModelScope.launch {
+            val result = withContext(Dispatchers.IO) { UpdateChecker.checkLatest() }
+            updateState.value = result
+        }
+    }
+
+
+    fun setUsername(value: String) {
+        prefs.setUsername(value)
+    }
+
     fun setPassword(value: String) {
         val tunnel = ShareHub.state.value.tunnelPhase
-        val tunnelUp = tunnel is TunnelPhase.Up || tunnel is TunnelPhase.Starting
+        val tunnelUp = tunnel is TunnelPhase.Up || tunnel is TunnelPhase.Starting || tunnel is TunnelPhase.Unreachable
         if (value.isEmpty() && tunnelUp) {
             return
         }
@@ -513,6 +534,7 @@ class ShelfViewModel(app: Application) : AndroidViewModel(app) {
         }
         val scheme = if (url.startsWith("https://")) "https://" else "http://"
         val rest = url.removePrefix(scheme)
-        return scheme + ShareDefaults.USERNAME + ":" + Uri.encode(secret) + "@" + rest
+        val user = Uri.encode(prefs.currentUsername())
+        return scheme + user + ":" + Uri.encode(secret) + "@" + rest
     }
 }

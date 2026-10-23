@@ -60,6 +60,15 @@ class CloudflaredRunner(private val context: Context) {
         }
     }
 
+    fun isAlive(): Boolean {
+        val current = process ?: return false
+        return try {
+            current.isAlive
+        } catch (error: Exception) {
+            false
+        }
+    }
+
     fun stop() {
         val current = process ?: return
         process = null

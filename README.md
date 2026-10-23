@@ -42,7 +42,7 @@ ZIP 同下載路由（要登入，同其他路徑一樣，本機迴環都唔豁�
 - `GET /thumb/{mountId}/{路徑}?edge=96`：要登入。有密碼時，清單把會話權杖放喺 `t=`，等 `<img>` 唔使再送一次 Basic（透過 `user:pass@` 或者 Cloudflare 打開頁面時，瀏覽器通常唔會把 Authorization 帶去圖片）。回一張最長邊受限制的 JPEG（48–512，預設 160）。手機用取樣解碼同記憶體快取，唔會把原圖放進每一格。抽唔到畫面時格子會留低原本嘅圖示。
 4. 可選：`CloudflaredRunner` 執行 `libcloudflared.so`，對住 `http://127.0.0.1:<port>`。畫面上可以複製公開網址；二維碼唔包含密碼。
 
-認證：HTTP Basic（用戶名任意，慣例 `quick`）、`Authorization: Bearer`、`X-QuickTemp-Token`，或者登入頁發出嘅 cookie。密碼用 SHA-256 再做常數時間比較。
+認證：HTTP Basic（用戶名可喺 App 設定，預設 `quick`；要同密碼一齊啱）、`Authorization: Bearer`、`X-QuickTemp-Token`，或者登入頁發出嘅 cookie。密碼用 SHA-256 再做常數時間比較。Try Cloudflare 隧道會每分鐘檢查公開網址是否仍然可達。
 
 `http://127.0.0.1` 唔會豁免密碼。公開隧道嘅連線都係由本機轉入。
 
@@ -61,7 +61,7 @@ Windows：
 gradlew.bat :app:assembleDebug
 ```
 
-輸出：`app/build/outputs/apk/debug/quick-temp-open-server-0.1.7-debug.apk`。可以再複製去 `artifacts/`（呢個目錄入面嘅 APK 唔入 git）。
+輸出：`app/build/outputs/apk/debug/quick-temp-open-server-0.1.8-debug.apk`。可以再複製去 `artifacts/`（呢個目錄入面嘅 APK 唔入 git）。
 
 單元測試同本機試伺服器唔使 Android SDK：
 

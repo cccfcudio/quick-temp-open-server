@@ -27,6 +27,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.KeyboardType
@@ -40,15 +41,19 @@ import app.openshelf.core.model.ShareDefaults
 import app.openshelf.core.model.StoredMount
 import app.openshelf.core.model.StoredMountKind
 import app.openshelf.share.ServerPhase
+import app.openshelf.share.GitHubProject
 import app.openshelf.share.ShareUiState
+import app.openshelf.share.UpdateStatus
 import app.openshelf.share.TunnelPhase
 
 @Composable
 fun HomeScreen(
     mounts: List<StoredMount>,
+    username: String,
     password: String,
     port: Int,
     share: ShareUiState,
+    onUsername: (String) -> Unit,
     onPassword: (String) -> Unit,
     onGeneratePassword: () -> Unit,
     onPort: (String) -> Unit,
@@ -65,6 +70,8 @@ fun HomeScreen(
     onBattery: () -> Unit,
     onCopy: (String) -> Unit,
     loginLink: (String) -> String,
+    updateStatus: UpdateStatus,
+    onCheckUpdates: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -79,9 +86,9 @@ fun HomeScreen(
             Text(stringResource(R.string.browse))
         }
         MountCard(mounts, onPick, onAppShare, onRemove)
-        PasswordCard(password, onPassword, onGeneratePassword, onCopy)
+        AuthCard(username, password, onUsername, onPassword, onGeneratePassword, onCopy)
         TunnelCard(share, password, onStartTunnel, onStopTunnel, onCopy, loginLink)
-        ShareCard(share, port, onPort, onStart, onStop, onRefreshLan, onCopy, password, loginLink)
+        ShareCard(share, port, onPort, onStart, onStop, onRefreshLan, onCopy, username, password, loginLink)
         DriverCard()
         TextButton(onClick = onBattery) { Text(stringResource(R.string.allow_background)) }
         Text(
@@ -89,7 +96,46 @@ fun HomeScreen(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
         )
+        UpdateCard(updateStatus, onCheckUpdates)
         TextButton(onClick = onAbout) { Text(stringResource(R.string.about)) }
+    }
+}
+
+@Composable
+private fun UpdateCard(status: UpdateStatus, onCheckUpdates: () -> Unit) {
+    val uriHandler = LocalUriHandler.current
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(stringResource(R.string.github_repo), style = MaterialTheme.typography.titleMedium)
+            TextButton(onClick = { uriHandler.openUri(GitHubProject.PAGE_URL) }) {
+                Text(stringResource(R.string.github_url_label))
+            }
+            when (status) {
+                UpdateStatus.Checking -> Text(stringResource(R.string.update_checking))
+                UpdateStatus.UpToDate -> Text(
+                    stringResource(R.string.update_up_to_date, app.openshelf.BuildConfig.VERSION_NAME),
+                )
+                is UpdateStatus.Available -> {
+                    Text(
+                        stringResource(
+                            R.string.update_available,
+                            status.latestTag,
+                            app.openshelf.BuildConfig.VERSION_NAME,
+                        ),
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                    Button(onClick = { uriHandler.openUri(status.releaseUrl) }, modifier = Modifier.fillMaxWidth()) {
+                        Text(stringResource(R.string.update_open_release))
+                    }
+                }
+                is UpdateStatus.Failed -> Text(
+                    stringResource(R.string.update_check_failed) + ": " + status.message,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+            TextButton(onClick = onCheckUpdates) { Text(stringResource(R.string.check_updates)) }
+        }
     }
 }
 
@@ -158,6 +204,7 @@ private fun ShareCard(
     onStop: () -> Unit,
     onRefreshLan: () -> Unit,
     onCopy: (String) -> Unit,
+    username: String,
     password: String,
     loginLink: (String) -> String,
 ) {
@@ -210,7 +257,7 @@ private fun ShareCard(
                 }
                 TextButton(onClick = onRefreshLan) { Text(stringResource(R.string.refresh_lan)) }
                 Text(
-                    stringResource(R.string.username_hint, ShareDefaults.USERNAME),
+                    stringResource(R.string.username_hint, username),
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
@@ -219,8 +266,10 @@ private fun ShareCard(
 }
 
 @Composable
-private fun PasswordCard(
+private fun AuthCard(
+    username: String,
     password: String,
+    onUsername: (String) -> Unit,
     onPassword: (String) -> Unit,
     onGenerate: () -> Unit,
     onCopy: (String) -> Unit,
@@ -228,7 +277,18 @@ private fun PasswordCard(
     var visible by remember { mutableStateOf(false) }
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(stringResource(R.string.password), style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(R.string.auth_section), style = MaterialTheme.typography.titleMedium)
+            Text(
+                stringResource(R.string.username_hint, ShareDefaults.USERNAME),
+                style = MaterialTheme.typography.bodySmall,
+            )
+            OutlinedTextField(
+                value = username,
+                onValueChange = onUsername,
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text(stringResource(R.string.username)) },
+                singleLine = true,
+            )
             Text(stringResource(R.string.password_hint), style = MaterialTheme.typography.bodySmall)
             OutlinedTextField(
                 value = password,
@@ -285,13 +345,27 @@ private fun TunnelCard(
                     LinearProgressIndicator(Modifier.fillMaxWidth())
                 }
                 TunnelPhase.Up -> Text(stringResource(R.string.tunnel_up))
+                is TunnelPhase.Unreachable -> {
+                    Text(
+                        stringResource(R.string.tunnel_unreachable),
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.titleSmall,
+                    )
+                    Text(
+                        stringResource(R.string.tunnel_unreachable_detail, phase.message),
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
                 TunnelPhase.BinaryMissing -> Text(
                     stringResource(R.string.tunnel_missing_binary),
                     color = MaterialTheme.colorScheme.error,
                 )
                 is TunnelPhase.Failed -> Text(phase.message, color = MaterialTheme.colorScheme.error)
             }
-            val busy = share.tunnelPhase is TunnelPhase.Starting || share.tunnelPhase is TunnelPhase.Up
+            val busy = share.tunnelPhase is TunnelPhase.Starting ||
+                share.tunnelPhase is TunnelPhase.Up ||
+                share.tunnelPhase is TunnelPhase.Unreachable
             Button(
                 onClick = if (busy) onStop else onStart,
                 modifier = Modifier.fillMaxWidth().height(52.dp),

@@ -20,16 +20,20 @@ import kotlinx.coroutines.flow.asStateFlow
 class ShelfPrefs(context: Context) {
     private val prefs = context.getSharedPreferences(FILE, Context.MODE_PRIVATE)
     private val mountsState = MutableStateFlow(readMounts())
+    private val usernameState = MutableStateFlow(readUsername())
     private val passwordState = MutableStateFlow(prefs.getString(KEY_PASSWORD, "") ?: "")
     private val portState = MutableStateFlow(prefs.getInt(KEY_PORT, ShareDefaults.PORT))
     private val listingState = MutableStateFlow(readListing())
 
     val mounts: StateFlow<List<StoredMount>> = mountsState.asStateFlow()
+    val username: StateFlow<String> = usernameState.asStateFlow()
     val password: StateFlow<String> = passwordState.asStateFlow()
     val port: StateFlow<Int> = portState.asStateFlow()
     val listing: StateFlow<ListingOptions> = listingState.asStateFlow()
 
     fun currentMounts(): List<StoredMount> = mountsState.value
+
+    fun currentUsername(): String = usernameState.value.ifBlank { ShareDefaults.USERNAME }
 
     fun currentPassword(): String = passwordState.value
 
@@ -49,6 +53,12 @@ class ShelfPrefs(context: Context) {
     }
 
     fun tunnelWanted(): Boolean = prefs.getBoolean(KEY_TUNNEL, false)
+
+    fun setUsername(value: String) {
+        val cleaned = value.trim()
+        prefs.edit().putString(KEY_USERNAME, cleaned).apply()
+        usernameState.value = cleaned.ifBlank { ShareDefaults.USERNAME }
+    }
 
     fun setPassword(value: String) {
         prefs.edit().putString(KEY_PASSWORD, value).apply()
@@ -113,6 +123,11 @@ class ShelfPrefs(context: Context) {
         }
     }
 
+    private fun readUsername(): String {
+        val stored = prefs.getString(KEY_USERNAME, null)
+        return (stored ?: ShareDefaults.USERNAME).ifBlank { ShareDefaults.USERNAME }
+    }
+
     private fun readListing(): ListingOptions {
         return ListingOptions(
             sort = parseSort(prefs.getString(KEY_SORT, null)),
@@ -150,6 +165,7 @@ class ShelfPrefs(context: Context) {
     private companion object {
         const val FILE = "openshelf"
         const val KEY_MOUNTS = "mounts"
+        const val KEY_USERNAME = "username"
         const val KEY_PASSWORD = "password"
         const val KEY_PORT = "port"
         const val KEY_TUNNEL = "tunnel_wanted"

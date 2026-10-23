@@ -420,8 +420,13 @@ input[type=checkbox] { width: 1.05rem; height: 1.05rem; accent-color: var(--acce
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 """.trimIndent()
 
-internal fun loginPage(next: String?, failed: Boolean = false): String {
+internal fun loginPage(
+    next: String?,
+    failed: Boolean = false,
+    username: String = ShareDefaults.USERNAME,
+): String {
     val destination = esc(safeNext(next))
+    val user = esc(username.ifBlank { ShareDefaults.USERNAME })
     val error = if (failed) "<p class=\"alert\" role=\"alert\">密碼唔啱。</p>" else ""
     return page(
         "登入",
@@ -430,7 +435,7 @@ internal fun loginPage(next: String?, failed: Boolean = false): String {
           <div class="card">
             <p><span class="mark" aria-hidden="true">快</span></p>
             <h1>快速臨時開放伺服器</h1>
-            <p class="note">輸入分享密碼。用戶名可以填 ${esc(ShareDefaults.USERNAME)}。</p>
+            <p class="note">瀏覽器表單只需密碼。WebDAV / HTTP Basic 登入請用用戶名 <code>$user</code> 同下面密碼。</p>
             $error
             <form method="post" action="/login">
               <input type="hidden" name="next" value="$destination">

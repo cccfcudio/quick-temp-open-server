@@ -21,6 +21,7 @@ internal class SessionStore {
 
 internal class AccessGuard(
     private val password: () -> String,
+    private val username: () -> String,
     private val sessions: SessionStore,
 ) {
     fun allow(headers: Map<String, String>): Boolean {
@@ -28,6 +29,7 @@ internal class AccessGuard(
         if (expected.isEmpty()) {
             return true
         }
+        val expectedUser = username().ifBlank { ShareDefaults.USERNAME }
         val authorization = headers["authorization"]
         if (authorization != null) {
             if (authorization.startsWith("Bearer ", ignoreCase = true)) {
@@ -35,8 +37,12 @@ internal class AccessGuard(
                     return true
                 }
             } else if (authorization.startsWith("Basic ", ignoreCase = true)) {
-                val given = decodeBasicPassword(authorization.substring(6).trim())
-                if (given != null && Token.constantEquals(expected, given)) {
+                val given = decodeBasicCredentials(authorization.substring(6).trim())
+                if (
+                    given != null &&
+                    Token.constantEquals(expectedUser, given.first) &&
+                    Token.constantEquals(expected, given.second)
+                ) {
                     return true
                 }
             }
@@ -65,14 +71,14 @@ internal class AccessGuard(
     }
 }
 
-internal fun decodeBasicPassword(encoded: String): String? {
+internal fun decodeBasicCredentials(encoded: String): Pair<String, String>? {
     val bytes = decodeBase64(encoded) ?: return null
     val text = bytes.toString(Charsets.UTF_8)
     val colon = text.indexOf(':')
     if (colon < 0) {
         return null
     }
-    return text.substring(colon + 1)
+    return text.substring(0, colon) to text.substring(colon + 1)
 }
 
 internal fun cookieValue(header: String, name: String): String? {

@@ -12,8 +12,8 @@ android {
         applicationId = "app.openshelf"
         minSdk = 26
         targetSdk = 35
-        versionCode = 8
-        versionName = "0.1.7"
+        versionCode = 9
+        versionName = "0.1.8"
         ndk {
             abiFilters += listOf("arm64-v8a")
         }
@@ -40,6 +40,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     packaging {
@@ -51,7 +52,7 @@ android {
 }
 
 base {
-    archivesName.set("quick-temp-open-server-0.1.7")
+    archivesName.set("quick-temp-open-server-0.1.8")
 }
 
 dependencies {

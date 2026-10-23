@@ -132,6 +132,25 @@ class ShareHttpServerTest {
     }
 
     @Test
+    fun basicAuthRequiresConfiguredUsername() {
+        withServer(password = "secret", username = "alice") { server, _ ->
+            val wrongUser = Base64.getEncoder().encodeToString("quick:secret".toByteArray(Charsets.UTF_8))
+            val denied = exchange(
+                server.port,
+                request("GET", "/", extra = listOf("Authorization" to "Basic $wrongUser")),
+            )
+            assertEquals(401, denied.status)
+
+            val okUser = Base64.getEncoder().encodeToString("alice:secret".toByteArray(Charsets.UTF_8))
+            val allowed = exchange(
+                server.port,
+                request("GET", "/", extra = listOf("Authorization" to "Basic $okUser")),
+            )
+            assertEquals(200, allowed.status)
+        }
+    }
+
+    @Test
     fun bearerAndTokenHeaderWork() {
         withServer(password = "secret") { server, _ ->
             val bearer = exchange(server.port, request("GET", "/healthz"))
@@ -579,6 +598,7 @@ class ShareHttpServerTest {
 
     private fun withServer(
         password: String = "",
+        username: String = "quick",
         preview: ((FileStore) -> JpegPreview)? = null,
         block: (ShareHttpServer, File) -> Unit,
     ) {
@@ -587,6 +607,7 @@ class ShareHttpServerTest {
         val server = ShareHttpServer(
             store = store,
             password = { password },
+            username = { username },
             bindHost = "127.0.0.1",
             requestedPort = 0,
             preview = preview?.invoke(store),
@@ -612,7 +633,7 @@ class ShareHttpServerTest {
             headers.add("Host" to "127.0.0.1")
         }
         if (auth != null) {
-            val token = Base64.getEncoder().encodeToString("openshelf:$auth".toByteArray(Charsets.UTF_8))
+            val token = Base64.getEncoder().encodeToString("quick:$auth".toByteArray(Charsets.UTF_8))
             headers.add("Authorization" to "Basic $token")
         }
         headers.addAll(extra)

@@ -53,6 +53,7 @@ class MainActivity : ComponentActivity() {
                 val vm: ShelfViewModel = viewModel()
                 val screen by vm.screen.collectAsStateWithLifecycle()
                 val mounts by vm.mounts.collectAsStateWithLifecycle()
+                val username by vm.username.collectAsStateWithLifecycle()
                 val password by vm.password.collectAsStateWithLifecycle()
                 val port by vm.port.collectAsStateWithLifecycle()
                 val share by vm.share.collectAsStateWithLifecycle()
@@ -63,6 +64,7 @@ class MainActivity : ComponentActivity() {
                 val message by vm.message.collectAsStateWithLifecycle()
                 val zip by vm.zip.collectAsStateWithLifecycle()
                 val download by vm.download.collectAsStateWithLifecycle()
+                val updateStatus by vm.updateStatus.collectAsStateWithLifecycle()
                 val snackbar = remember { SnackbarHostState() }
                 val scope = rememberCoroutineScope()
                 val notifications = rememberLauncherForActivityResult(
@@ -134,9 +136,11 @@ class MainActivity : ComponentActivity() {
                             when (val current = screen) {
                                 ShelfScreen.Home -> HomeScreen(
                                     mounts = mounts,
+                                    username = username,
                                     password = password,
                                     port = port,
                                     share = share,
+                                    onUsername = vm::setUsername,
                                     onPassword = vm::setPassword,
                                     onGeneratePassword = vm::generatePassword,
                                     onPort = vm::setPort,
@@ -153,8 +157,14 @@ class MainActivity : ComponentActivity() {
                                     onBattery = { askBattery() },
                                     onCopy = { copy(it) },
                                     loginLink = vm::loginLink,
+                                    updateStatus = updateStatus,
+                                    onCheckUpdates = vm::checkForUpdates,
                                 )
-                                ShelfScreen.About -> AboutScreen(onBack = vm::goBack)
+                                ShelfScreen.About -> AboutScreen(
+                                    onBack = vm::goBack,
+                                    updateStatus = updateStatus,
+                                    onCheckUpdates = vm::checkForUpdates,
+                                )
                                 is ShelfScreen.Browser -> {
                                     val title = when {
                                         current.mountId == null -> getString(R.string.browse)
