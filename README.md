@@ -1,5 +1,48 @@
 # Quick Temp Open Server
 
+Repository: [`cccfcudio/quick-temp-open-server`](https://github.com/cccfcudio/quick-temp-open-server)
+
+## English
+
+### What it is
+
+**Quick Temp Open Server** is a small **file hub for Android and desktop (JVM)**. You **mount folders you choose**; the app starts a **local HTTP server and WebDAV** endpoint on your network. Other devices on the same LAN can **browse, download, and upload** through a web UI or any WebDAV client.
+
+Optionally, **Try Cloudflare** runs **cloudflared Quick Tunnel** and gives you a **temporary public HTTPS URL** on `trycloudflare.com`—useful for quick tests; the hostname changes every time you start it.
+
+Android `applicationId` remains `app.openshelf`. **v1 only mounts local folders.** S3, remote WebDAV, Aliyun Drive, and OneDrive appear in the UI as placeholders (not implemented yet).
+
+### What it’s for
+
+- **LAN file sharing** without syncing everything to a cloud drive: mount SAF folders or the app’s private share folder, tap start, open the LAN URL on a PC or tablet.
+- **WebDAV workflows**—map the server in a file manager, backup tool, or editor while sharing is on.
+- **Short-lived public access** for demos or debugging via Cloudflare Quick Tunnel. **Not** a production hosting solution. When the tunnel is on, a **password is required**; **loopback is authenticated too**, because cloudflared forwards from `127.0.0.1`.
+
+On Android, sharing runs as a **foreground service** (stop from the notification). The same **`:core` JVM module** implements the server; you can run it on a desktop for development with `./gradlew :core:run`.
+
+### Quick highlights
+
+- Mount **any folder you pick** (plus app shortcuts to Camera, Pictures, Downloads)—not a gallery-only or photo-type WebDAV host.
+- **One server**: web browsing, uploads/downloads, **WebDAV** (`/dav/`), thumbnails, ZIP/batch download, and a small JSON API.
+- Listings support sort, type filter, and pagination; multi-select in the app and in the web UI.
+- Auth: HTTP Basic (configurable username), Bearer token, `X-QuickTemp-Token`, or login cookie.
+
+### How this differs from gallery WebDAV or OpenList
+
+Quick Temp Open Server is **not** a temporary gallery WebDAV app and **not** Docker OpenList.
+
+- You mount **folders you choose** (Storage Access Framework) and the app share directory—not a fixed camera roll.
+- The same server serves **HTML browsing**, **file transfer**, and **WebDAV**; file types are not limited to photos.
+- **Optional public HTTPS** via Quick Tunnel (testing/development only; URL changes each run).
+
+### More detail
+
+Architecture, HTTP routes, build instructions, and cloudflared notes are documented in the **Traditional Chinese** section below (kept in sync with the codebase).
+
+---
+
+## 中文（繁體）
+
 快速臨時開放伺服器。GitHub 倉庫係 [`cccfcudio/quick-temp-open-server`](https://github.com/cccfcudio/quick-temp-open-server)。
 
 呢個係一部手機上嘅簡易檔案中樞。你掛載自己嘅資料夾，手機就開一個本機 HTTP / WebDAV 伺服器；同一網路上嘅其他裝置可以列出、下載、上載。想臨時畀外網用，可以開 Try Cloudflare（cloudflared Quick Tunnel），攞一條 `trycloudflare.com` 嘅 HTTPS 網址。
