@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Quick Temp Open Server</string>
-    <string name="tagline">Mount your own folders, then share them on the LAN or with Try Cloudflare.</string>
+    <string name="tagline">Mount your folders, share on the LAN with a browser and WebDAV, or use Try Cloudflare for a temporary public link.</string>
     <string name="section_mounts">Folders</string>
     <string name="empty_mounts">Nothing is mounted yet. Pick a folder, or use a shortcut below.</string>
     <string name="pick_folder">Pick folder</string>
@@ -74,7 +74,7 @@
     <string name="current_version">Version %1$s (%2$d)</string>
     <string name="about">About</string>
     <string name="about_title">About Quick Temp Open Server</string>
-    <string name="about_body">Quick Temp Open Server is a small file hub on your phone: mount your own folders, share them over a browser and WebDAV, and optionally open a Cloudflare Quick Tunnel. It is not a gallery-only temporary WebDAV host, and it is not Docker OpenList.</string>
+    <string name="about_body">Quick Temp Open Server is a small file hub on your phone (the same server core also runs on desktop for development): mount folders you choose, share them on your LAN over HTTP and WebDAV, and optionally publish a temporary HTTPS URL with Try Cloudflare. It is not a gallery-only temporary WebDAV host, and it is not Docker OpenList.</string>
     <string name="refresh">Refresh</string>
     <string name="empty_folder">This folder is empty.</string>
     <string name="no_matches">Nothing matches.</string>
