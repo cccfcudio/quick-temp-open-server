@@ -12,6 +12,8 @@ Optionally, **Try Cloudflare** runs **cloudflared Quick Tunnel** and gives you a
 
 Android `applicationId` remains `app.openshelf`. **v1 only mounts local folders.** S3, remote WebDAV, Aliyun Drive, and OneDrive appear in the UI as placeholders (not implemented yet).
 
+The Android app defaults to **English** (`res/values/`). **Traditional Chinese** (Hong Kong-style copy) is in `values-zh-rHK` and `values-b+zh+Hant`; set the device or per-app language to 繁體中文 to use it.
+
 ### What it’s for
 
 - **LAN file sharing** without syncing everything to a cloud drive: mount SAF folders or the app’s private share folder, tap start, open the LAN URL on a PC or tablet.
