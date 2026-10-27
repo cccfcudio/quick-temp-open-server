@@ -26,9 +26,10 @@ class ShareService : Service() {
         val channel = NotificationChannel(
             CHANNEL,
             getString(R.string.notification_channel),
-            NotificationManager.IMPORTANCE_LOW,
+            NotificationManager.IMPORTANCE_DEFAULT,
         )
         channel.setShowBadge(false)
+        channel.description = getString(R.string.keepalive_running_banner)
         manager.createNotificationChannel(channel)
         ShareHub.setListener { state ->
             if (alive) {
@@ -106,9 +107,15 @@ class ShareService : Service() {
             .setSmallIcon(R.drawable.ic_stat_shelf)
             .setContentTitle(getString(R.string.notification_title))
             .setContentText(text)
+            .setStyle(
+                NotificationCompat.BigTextStyle()
+                    .bigText("$text\n${getString(R.string.keepalive_running_banner)}"),
+            )
             .setContentIntent(open)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
+            .setCategory(NotificationCompat.CATEGORY_SERVICE)
+            .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
             .addAction(0, getString(R.string.notification_stop), stop)
             .build()
     }
@@ -118,7 +125,7 @@ class ShareService : Service() {
         const val ACTION_STOP = "app.openshelf.STOP"
         const val ACTION_START_TUNNEL = "app.openshelf.START_TUNNEL"
         const val ACTION_STOP_TUNNEL = "app.openshelf.STOP_TUNNEL"
-        private const val CHANNEL = "openshelf_share"
+        private const val CHANNEL = "openshelf_share_keepalive"
         private const val NOTIFICATION_ID = 42
     }
 }
