@@ -33,6 +33,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -43,6 +44,7 @@ import app.openshelf.share.DownloadPhase
 import app.openshelf.share.SafIntents
 import app.openshelf.share.ShelfScreen
 import app.openshelf.share.ShelfViewModel
+import app.openshelf.share.UpdateStatus
 import app.openshelf.share.ZipPhase
 import app.openshelf.ui.AboutScreen
 import app.openshelf.ui.BrowserScreen
@@ -75,6 +77,13 @@ class MainActivity : ComponentActivity() {
                 val scope = rememberCoroutineScope()
                 var showKeepAlive by remember { mutableStateOf(false) }
                 var batteryExempt by remember { mutableStateOf(isBatteryExempt()) }
+                var dismissedUpdateTag by remember { mutableStateOf<String?>(null) }
+                val uriHandler = LocalUriHandler.current
+                val availableUpdate = updateStatus as? UpdateStatus.Available
+                val showUpdatePrompt =
+                    availableUpdate != null &&
+                        availableUpdate.latestTag != dismissedUpdateTag &&
+                        !showKeepAlive
                 val notifications = rememberLauncherForActivityResult(
                     ActivityResultContracts.RequestPermission(),
                 ) {
@@ -205,6 +214,36 @@ class MainActivity : ComponentActivity() {
                                 TextButton(onClick = { proceedStartShare() }) {
                                     Text(getString(R.string.keepalive_continue))
                                 }
+                            }
+                        },
+                    )
+                }
+                if (showUpdatePrompt && availableUpdate != null) {
+                    AlertDialog(
+                        onDismissRequest = { dismissedUpdateTag = availableUpdate.latestTag },
+                        title = { Text(getString(R.string.update_prompt_title)) },
+                        text = {
+                            Text(
+                                getString(
+                                    R.string.update_prompt_body,
+                                    availableUpdate.latestTag,
+                                    BuildConfig.VERSION_NAME,
+                                ),
+                            )
+                        },
+                        confirmButton = {
+                            TextButton(
+                                onClick = {
+                                    uriHandler.openUri(availableUpdate.releaseUrl)
+                                    dismissedUpdateTag = availableUpdate.latestTag
+                                },
+                            ) {
+                                Text(getString(R.string.update_open_release))
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { dismissedUpdateTag = availableUpdate.latestTag }) {
+                                Text(getString(R.string.update_prompt_later))
                             }
                         },
                     )
