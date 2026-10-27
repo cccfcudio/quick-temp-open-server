@@ -67,6 +67,9 @@
     <string name="github_url_label">https://github.com/cccfcudio/quick-temp-open-server</string>
     <string name="update_checking">Checking for updates…</string>
     <string name="update_available">Update available: %1$s (you have %2$s)</string>
+    <string name="update_prompt_title">Update available</string>
+    <string name="update_prompt_body">A newer version %1$s is available (you have %2$s). Updating is recommended for the latest fixes and features.</string>
+    <string name="update_prompt_later">Later</string>
     <string name="update_open_release">Open release</string>
     <string name="update_up_to_date">Up to date (%1$s)</string>
     <string name="check_updates">Check again</string>

@@ -67,6 +67,9 @@
     <string name="github_url_label">https://github.com/cccfcudio/quick-temp-open-server</string>
     <string name="update_checking">檢查緊更新…</string>
     <string name="update_available">有新版本 %1$s（而家係 %2$s）</string>
+    <string name="update_prompt_title">發現新版本</string>
+    <string name="update_prompt_body">有新版本 %1$s 可用（你而家係 %2$s）。建議更新以取得最新功能同修正。</string>
+    <string name="update_prompt_later">稍後</string>
     <string name="update_open_release">開啟 Release</string>
     <string name="update_up_to_date">已經係最新版本 %1$s</string>
     <string name="check_updates">重新檢查更新</string>
