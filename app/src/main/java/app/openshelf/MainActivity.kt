@@ -7,6 +7,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.PowerManager
 import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -19,13 +20,18 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -67,16 +73,26 @@ class MainActivity : ComponentActivity() {
                 val updateStatus by vm.updateStatus.collectAsStateWithLifecycle()
                 val snackbar = remember { SnackbarHostState() }
                 val scope = rememberCoroutineScope()
+                var showKeepAlive by remember { mutableStateOf(false) }
+                var batteryExempt by remember { mutableStateOf(isBatteryExempt()) }
                 val notifications = rememberLauncherForActivityResult(
                     ActivityResultContracts.RequestPermission(),
                 ) {
-                    vm.startSharing()
+                    showKeepAlive = true
+                }
+                val batterySettings = rememberLauncherForActivityResult(
+                    ActivityResultContracts.StartActivityForResult(),
+                ) {
+                    batteryExempt = isBatteryExempt()
                 }
                 val picker = rememberLauncherForActivityResult(
                     ActivityResultContracts.StartActivityForResult(),
                 ) { result ->
                     val uri = result.data?.data ?: return@rememberLauncherForActivityResult
                     vm.addTree(uri, result.data)
+                }
+                LaunchedEffect(Unit) {
+                    batteryExempt = isBatteryExempt()
                 }
                 LaunchedEffect(message) {
                     val text = message ?: return@LaunchedEffect
@@ -115,15 +131,83 @@ class MainActivity : ComponentActivity() {
                     clipboard.setPrimaryClip(ClipData.newPlainText("Quick Temp Open Server", text))
                     scope.launch { snackbar.showSnackbar(getString(R.string.copied)) }
                 }
-                fun startShare() {
+                fun beginStartShare() {
                     val need = Build.VERSION.SDK_INT >= 33 &&
                         ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) !=
                         android.content.pm.PackageManager.PERMISSION_GRANTED
                     if (need) {
                         notifications.launch(Manifest.permission.POST_NOTIFICATIONS)
                     } else {
-                        vm.startSharing()
+                        showKeepAlive = true
                     }
+                }
+                fun proceedStartShare() {
+                    showKeepAlive = false
+                    batteryExempt = isBatteryExempt()
+                    vm.startSharing()
+                }
+                fun openBatterySettings() {
+                    try {
+                        val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).setData(
+                            Uri.parse("package:$packageName"),
+                        )
+                        batterySettings.launch(intent)
+                    } catch (_: Exception) {
+                        try {
+                            batterySettings.launch(
+                                Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS),
+                            )
+                        } catch (_: Exception) {
+                            Toast.makeText(this, getString(R.string.battery_unavailable), Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+                if (showKeepAlive) {
+                    AlertDialog(
+                        onDismissRequest = { showKeepAlive = false },
+                        title = { Text(getString(R.string.keepalive_title)) },
+                        text = {
+                            Text(
+                                buildString {
+                                    append(getString(R.string.keepalive_body))
+                                    if (!batteryExempt) {
+                                        append("\n\n")
+                                        append(getString(R.string.keepalive_need_battery))
+                                    }
+                                },
+                            )
+                        },
+                        confirmButton = {
+                            TextButton(
+                                onClick = {
+                                    if (!isBatteryExempt()) {
+                                        openBatterySettings()
+                                    } else {
+                                        proceedStartShare()
+                                    }
+                                },
+                            ) {
+                                Text(
+                                    if (batteryExempt) {
+                                        getString(R.string.keepalive_continue)
+                                    } else {
+                                        getString(R.string.keepalive_open_battery)
+                                    },
+                                )
+                            }
+                        },
+                        dismissButton = {
+                            if (batteryExempt) {
+                                TextButton(onClick = { showKeepAlive = false }) {
+                                    Text(getString(R.string.cancel))
+                                }
+                            } else {
+                                TextButton(onClick = { proceedStartShare() }) {
+                                    Text(getString(R.string.keepalive_continue))
+                                }
+                            }
+                        },
+                    )
                 }
                 Scaffold(
                     snackbarHost = { SnackbarHost(snackbar) },
@@ -140,6 +224,7 @@ class MainActivity : ComponentActivity() {
                                     password = password,
                                     port = port,
                                     share = share,
+                                    batteryExempt = batteryExempt,
                                     onUsername = vm::setUsername,
                                     onPassword = vm::setPassword,
                                     onGeneratePassword = vm::generatePassword,
@@ -147,14 +232,14 @@ class MainActivity : ComponentActivity() {
                                     onPick = { relative -> picker.launch(SafIntents.openTree(relative)) },
                                     onAppShare = vm::mountAppShare,
                                     onRemove = vm::remove,
-                                    onStart = { startShare() },
+                                    onStart = { beginStartShare() },
                                     onStop = vm::stopSharing,
                                     onStartTunnel = vm::startTunnel,
                                     onStopTunnel = vm::stopTunnel,
                                     onRefreshLan = vm::refreshLan,
                                     onBrowse = vm::openBrowser,
                                     onAbout = vm::openAbout,
-                                    onBattery = { askBattery() },
+                                    onBattery = { openBatterySettings() },
                                     onCopy = { copy(it) },
                                     loginLink = vm::loginLink,
                                     updateStatus = updateStatus,
@@ -216,15 +301,12 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun askBattery() {
-        try {
-            startActivity(
-                Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).setData(
-                    Uri.parse("package:$packageName"),
-                ),
-            )
-        } catch (error: Exception) {
-            Toast.makeText(this, getString(R.string.battery_unavailable), Toast.LENGTH_SHORT).show()
-        }
+    override fun onResume() {
+        super.onResume()
+    }
+
+    private fun isBatteryExempt(): Boolean {
+        val power = getSystemService(PowerManager::class.java) ?: return true
+        return power.isIgnoringBatteryOptimizations(packageName)
     }
 }

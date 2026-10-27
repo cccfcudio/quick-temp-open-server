@@ -53,6 +53,7 @@ fun HomeScreen(
     password: String,
     port: Int,
     share: ShareUiState,
+    batteryExempt: Boolean,
     onUsername: (String) -> Unit,
     onPassword: (String) -> Unit,
     onGeneratePassword: () -> Unit,
@@ -90,14 +91,55 @@ fun HomeScreen(
         TunnelCard(share, password, onStartTunnel, onStopTunnel, onCopy, loginLink)
         ShareCard(share, port, onPort, onStart, onStop, onRefreshLan, onCopy, username, password, loginLink)
         DriverCard()
-        TextButton(onClick = onBattery) { Text(stringResource(R.string.allow_background)) }
-        Text(
-            stringResource(R.string.battery_hint),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+        KeepAliveCard(
+            running = share.phase == ServerPhase.RUNNING,
+            batteryExempt = batteryExempt,
+            onBattery = onBattery,
         )
         UpdateCard(updateStatus, onCheckUpdates)
         TextButton(onClick = onAbout) { Text(stringResource(R.string.about)) }
+    }
+}
+
+@Composable
+private fun KeepAliveCard(
+    running: Boolean,
+    batteryExempt: Boolean,
+    onBattery: () -> Unit,
+) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(stringResource(R.string.keepalive_title), style = MaterialTheme.typography.titleMedium)
+            if (running) {
+                Text(
+                    stringResource(R.string.keepalive_running_banner),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            } else {
+                Text(
+                    stringResource(R.string.battery_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                )
+            }
+            Text(
+                if (batteryExempt) {
+                    stringResource(R.string.battery_exempt_ok)
+                } else {
+                    stringResource(R.string.battery_exempt_needed)
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (batteryExempt) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.error
+                },
+            )
+            Button(onClick = onBattery, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.allow_background))
+            }
+        }
     }
 }
 
