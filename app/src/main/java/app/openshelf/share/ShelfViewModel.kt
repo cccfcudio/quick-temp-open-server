@@ -3,6 +3,7 @@ package app.openshelf.share
 import android.app.Application
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import androidx.core.content.ContextCompat
 import android.provider.DocumentsContract
 import androidx.lifecycle.AndroidViewModel
@@ -19,6 +20,9 @@ import app.openshelf.core.model.FileEntry
 import app.openshelf.core.model.ShareDefaults
 import app.openshelf.core.model.StoredMount
 import app.openshelf.core.model.StoredMountKind
+import app.openshelf.core.mpc.MpcImport
+import app.openshelf.core.mpc.MpcPlanRow
+import app.openshelf.core.mpc.MpcRowStatus
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -37,6 +41,14 @@ sealed interface BrowserRow {
     data class MountRow(val id: String, val name: String) : BrowserRow
     data class EntryRow(val entry: FileEntry) : BrowserRow
 }
+
+data class MpcPick(
+    val token: Long,
+    val name: String,
+    val relative: String?,
+    val initialUri: String?,
+    val launched: Boolean,
+)
 
 sealed interface BrowserLoad {
     data object Loading : BrowserLoad
@@ -89,6 +101,17 @@ class ShelfViewModel(app: Application) : AndroidViewModel(app) {
     private val messageState = MutableStateFlow<String?>(null)
     val message: StateFlow<String?> = messageState.asStateFlow()
 
+    private val importRowsState = MutableStateFlow<List<MpcPlanRow>?>(null)
+    val mpcImport: StateFlow<List<MpcPlanRow>?> = importRowsState.asStateFlow()
+
+    private val pickState = MutableStateFlow<MpcPick?>(null)
+    val mpcPick: StateFlow<MpcPick?> = pickState.asStateFlow()
+
+    private val pickQueue = ArrayList<MpcPlanRow>()
+    private var pickToken = 0L
+    private var importAdded = 0
+    private var importSkipped = 0
+
     fun consumeMessage() {
         messageState.value = null
     }
@@ -129,25 +152,102 @@ class ShelfViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun addTree(uri: Uri, result: Intent?) {
-        val context = getApplication<Application>()
-        val flags = result?.flags ?: 0
-        val requested = flags and (Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
-        val granted = if (requested != 0) {
-            requested
-        } else {
-            Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-        }
-        try {
-            context.contentResolver.takePersistableUriPermission(uri, granted)
-        } catch (error: SecurityException) {
-            try {
-                context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            } catch (ignored: SecurityException) {
-                messageState.value = "無法保留資料夾權限"
-                return
-            }
+        if (!persistTree(uri, result)) {
+            messageState.value = getApplication<Application>().getString(R.string.permission_not_kept)
+            return
         }
         prefs.add(StoredMount(IdGenerator.newMountId(), treeName(uri), uri.toString(), StoredMountKind.SAF_TREE))
+    }
+
+    fun importMpc(uri: Uri) {
+        if (pickState.value != null || pickQueue.isNotEmpty()) {
+            messageState.value = getApplication<Application>().getString(R.string.import_mpc_busy)
+            return
+        }
+        val app = getApplication<Application>()
+        viewModelScope.launch {
+            val rows = try {
+                withContext(Dispatchers.IO) {
+                    val text = MpcImportBridge.readText(app, uri)
+                    MpcImportBridge.plan(app, text, prefs.currentMounts())
+                }
+            } catch (error: IllegalArgumentException) {
+                messageState.value = app.getString(R.string.import_mpc_parse_error)
+                return@launch
+            } catch (error: Exception) {
+                messageState.value = app.getString(R.string.import_mpc_read_error)
+                return@launch
+            }
+            if (rows.isEmpty()) {
+                messageState.value = app.getString(R.string.import_mpc_empty)
+                return@launch
+            }
+            importRowsState.value = rows
+        }
+    }
+
+    fun dismissMpcImport() {
+        importRowsState.value = null
+    }
+
+    fun confirmMpcImport(selected: Set<String>) {
+        val rows = importRowsState.value ?: return
+        val app = getApplication<Application>()
+        val chosen = rows.filter { it.profileId in selected && MpcImport.selectable(it.status) }
+        if (chosen.isEmpty()) {
+            Toast.makeText(app, app.getString(R.string.import_mpc_none), Toast.LENGTH_SHORT).show()
+            return
+        }
+        importAdded = 0
+        importSkipped = 0
+        val picks = ArrayList<MpcPlanRow>()
+        for (row in chosen) {
+            when (row.status) {
+                MpcRowStatus.READY -> if (mountReady(row)) {
+                    importAdded += 1
+                } else {
+                    importSkipped += 1
+                }
+                MpcRowStatus.NEEDS_PERMISSION,
+                MpcRowStatus.PRIVATE,
+                -> picks.add(row)
+                MpcRowStatus.DUPLICATE,
+                MpcRowStatus.ALREADY_MOUNTED,
+                MpcRowStatus.UNUSABLE,
+                -> importSkipped += 1
+            }
+        }
+        importRowsState.value = null
+        pickQueue.clear()
+        pickQueue.addAll(picks)
+        advancePick()
+    }
+
+    fun markMpcPickLaunched() {
+        val current = pickState.value ?: return
+        if (!current.launched) {
+            pickState.value = current.copy(launched = true)
+        }
+    }
+
+    fun finishMpcPick(uri: Uri?, result: Intent?) {
+        if (pickState.value == null) {
+            return
+        }
+        val name = pickState.value?.name ?: return
+        pickState.value = null
+        if (uri == null) {
+            importSkipped += 1 + pickQueue.size
+            pickQueue.clear()
+            reportImport()
+            return
+        }
+        if (persistTree(uri, result) && mountLocation(name, uri.toString(), StoredMountKind.SAF_TREE)) {
+            importAdded += 1
+        } else {
+            importSkipped += 1
+        }
+        advancePick()
     }
 
     fun mountAppShare() {
@@ -515,6 +615,88 @@ class ShelfViewModel(app: Application) : AndroidViewModel(app) {
     private fun command(action: String) {
         val intent = Intent(getApplication(), ShareService::class.java).setAction(action)
         ContextCompat.startForegroundService(getApplication(), intent)
+    }
+
+    private fun mountReady(row: MpcPlanRow): Boolean {
+        val location = row.location ?: return false
+        val kind = row.kind ?: return false
+        return mountLocation(row.name, location, kind)
+    }
+
+    private fun mountLocation(name: String, location: String, kind: StoredMountKind): Boolean {
+        val root = MpcImportBridge.externalRoot()
+        repeat(4) {
+            val mount = StoredMount(IdGenerator.newMountId(), clipName(name), location, kind)
+            if (prefs.addIfAbsent(mount) { existing -> MpcImport.samePlace(existing, location, root) }) {
+                return true
+            }
+            val placeTaken = prefs.currentMounts().any { existing ->
+                MpcImport.samePlace(existing.location, location, root)
+            }
+            if (placeTaken) {
+                return false
+            }
+        }
+        return false
+    }
+
+    private fun advancePick() {
+        if (pickQueue.isEmpty()) {
+            pickState.value = null
+            reportImport()
+            return
+        }
+        val next = pickQueue.removeAt(0)
+        val ancestor = MpcImportBridge.existingAncestor(next.pickerRelative)
+        val initialUri = if (ancestor != null || !next.pickerRelative.isNullOrBlank()) {
+            null
+        } else {
+            next.pickerUri
+        }
+        pickToken += 1
+        pickState.value = MpcPick(
+            token = pickToken,
+            name = clipName(next.name),
+            relative = ancestor,
+            initialUri = initialUri,
+            launched = false,
+        )
+    }
+
+    private fun reportImport() {
+        val app = getApplication<Application>()
+        messageState.value = if (importSkipped == 0) {
+            app.getString(R.string.import_mpc_added, importAdded)
+        } else {
+            app.getString(R.string.import_mpc_result, importAdded, importSkipped)
+        }
+    }
+
+    private fun persistTree(uri: Uri, result: Intent?): Boolean {
+        val context = getApplication<Application>()
+        val flags = result?.flags ?: 0
+        val requested = flags and (Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+        val granted = if (requested != 0) {
+            requested
+        } else {
+            Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+        }
+        return try {
+            context.contentResolver.takePersistableUriPermission(uri, granted)
+            true
+        } catch (error: SecurityException) {
+            try {
+                context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                true
+            } catch (ignored: SecurityException) {
+                false
+            }
+        }
+    }
+
+    private fun clipName(name: String): String {
+        val cleaned = name.replace('\n', ' ').replace('\r', ' ').trim().take(80)
+        return cleaned.ifBlank { "profile" }
     }
 
     private fun treeName(uri: Uri): String {

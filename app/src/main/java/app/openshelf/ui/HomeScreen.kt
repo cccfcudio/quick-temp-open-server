@@ -59,6 +59,7 @@ fun HomeScreen(
     onGeneratePassword: () -> Unit,
     onPort: (String) -> Unit,
     onPick: (String?) -> Unit,
+    onImportMpc: () -> Unit,
     onAppShare: () -> Unit,
     onRemove: (StoredMount) -> Unit,
     onStart: () -> Unit,
@@ -86,7 +87,7 @@ fun HomeScreen(
         OutlinedButton(onClick = onBrowse, modifier = Modifier.fillMaxWidth()) {
             Text(stringResource(R.string.browse))
         }
-        MountCard(mounts, onPick, onAppShare, onRemove)
+        MountCard(mounts, onPick, onImportMpc, onAppShare, onRemove)
         AuthCard(username, password, onUsername, onPassword, onGeneratePassword, onCopy)
         TunnelCard(share, password, onStartTunnel, onStopTunnel, onCopy, loginLink)
         ShareCard(share, port, onPort, onStart, onStop, onRefreshLan, onCopy, username, password, loginLink)
@@ -185,6 +186,7 @@ private fun UpdateCard(status: UpdateStatus, onCheckUpdates: () -> Unit) {
 private fun MountCard(
     mounts: List<StoredMount>,
     onPick: (String?) -> Unit,
+    onImportMpc: () -> Unit,
     onAppShare: () -> Unit,
     onRemove: (StoredMount) -> Unit,
 ) {
@@ -211,6 +213,9 @@ private fun MountCard(
             }
             Button(onClick = { onPick(null) }, modifier = Modifier.fillMaxWidth()) {
                 Text(stringResource(R.string.pick_folder))
+            }
+            OutlinedButton(onClick = onImportMpc, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.import_mpc))
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(onClick = { onPick("DCIM") }, modifier = Modifier.weight(1f)) {

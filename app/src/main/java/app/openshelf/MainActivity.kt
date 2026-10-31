@@ -49,6 +49,7 @@ import app.openshelf.share.ZipPhase
 import app.openshelf.ui.AboutScreen
 import app.openshelf.ui.BrowserScreen
 import app.openshelf.ui.HomeScreen
+import app.openshelf.ui.MpcImportDialog
 import app.openshelf.ui.OpenShelfTheme
 import kotlinx.coroutines.launch
 
@@ -94,11 +95,40 @@ class MainActivity : ComponentActivity() {
                 ) {
                     batteryExempt = isBatteryExempt()
                 }
+                val mpcImport by vm.mpcImport.collectAsStateWithLifecycle()
+                val mpcPick by vm.mpcPick.collectAsStateWithLifecycle()
                 val picker = rememberLauncherForActivityResult(
                     ActivityResultContracts.StartActivityForResult(),
                 ) { result ->
                     val uri = result.data?.data ?: return@rememberLauncherForActivityResult
                     vm.addTree(uri, result.data)
+                }
+                val jsonPicker = rememberLauncherForActivityResult(
+                    ActivityResultContracts.OpenDocument(),
+                ) { uri ->
+                    if (uri != null) {
+                        vm.importMpc(uri)
+                    }
+                }
+                val importPicker = rememberLauncherForActivityResult(
+                    ActivityResultContracts.StartActivityForResult(),
+                ) { result ->
+                    vm.finishMpcPick(result.data?.data, result.data)
+                }
+                LaunchedEffect(mpcPick?.token) {
+                    val pick = mpcPick ?: return@LaunchedEffect
+                    if (pick.launched) {
+                        return@LaunchedEffect
+                    }
+                    vm.markMpcPickLaunched()
+                    val initial = pick.initialUri?.let { raw ->
+                        runCatching { Uri.parse(raw) }.getOrNull()
+                    }
+                    try {
+                        importPicker.launch(SafIntents.openTree(pick.relative, initial))
+                    } catch (error: Exception) {
+                        vm.finishMpcPick(null, null)
+                    }
                 }
                 LaunchedEffect(Unit) {
                     batteryExempt = isBatteryExempt()
@@ -134,7 +164,13 @@ class MainActivity : ComponentActivity() {
                         DownloadPhase.Idle, is DownloadPhase.Running -> Unit
                     }
                 }
-                BackHandler(enabled = screen != ShelfScreen.Home) { vm.goBack() }
+                BackHandler(enabled = screen != ShelfScreen.Home || mpcImport != null) {
+                    if (mpcImport != null) {
+                        vm.dismissMpcImport()
+                    } else {
+                        vm.goBack()
+                    }
+                }
                 fun copy(text: String) {
                     val clipboard = getSystemService(ClipboardManager::class.java)
                     clipboard.setPrimaryClip(ClipData.newPlainText("Quick Temp Open Server", text))
@@ -170,6 +206,14 @@ class MainActivity : ComponentActivity() {
                             Toast.makeText(this, getString(R.string.battery_unavailable), Toast.LENGTH_SHORT).show()
                         }
                     }
+                }
+                val importing = mpcImport
+                if (importing != null) {
+                    MpcImportDialog(
+                        rows = importing,
+                        onDismiss = vm::dismissMpcImport,
+                        onConfirm = vm::confirmMpcImport,
+                    )
                 }
                 if (showKeepAlive) {
                     AlertDialog(
@@ -269,6 +313,16 @@ class MainActivity : ComponentActivity() {
                                     onGeneratePassword = vm::generatePassword,
                                     onPort = vm::setPort,
                                     onPick = { relative -> picker.launch(SafIntents.openTree(relative)) },
+                                    onImportMpc = {
+                                        jsonPicker.launch(
+                                            arrayOf(
+                                                "application/json",
+                                                "text/json",
+                                                "text/plain",
+                                                "application/octet-stream",
+                                            ),
+                                        )
+                                    },
                                     onAppShare = vm::mountAppShare,
                                     onRemove = vm::remove,
                                     onStart = { beginStartShare() },

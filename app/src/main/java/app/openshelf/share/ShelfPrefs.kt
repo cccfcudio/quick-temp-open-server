@@ -80,6 +80,15 @@ class ShelfPrefs(context: Context) {
         writeMounts(next)
     }
 
+    fun addIfAbsent(mount: StoredMount, samePlace: (String) -> Boolean): Boolean {
+        val mounts = currentMounts()
+        if (mounts.any { it.id == mount.id || samePlace(it.location) }) {
+            return false
+        }
+        writeMounts(mounts + mount)
+        return true
+    }
+
     fun remove(id: String) {
         writeMounts(currentMounts().filterNot { it.id == id })
     }

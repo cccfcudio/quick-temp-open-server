@@ -149,4 +149,23 @@
     <string name="download_none">未有選擇</string>
     <string name="download_channel">下載</string>
     <string name="download_notification_title">正在下載</string>
+    <string name="import_mpc">從 MultiProfileCam 匯入</string>
+    <string name="import_mpc_title">匯入 MultiProfileCam 設定</string>
+    <string name="import_mpc_hint">勾選要掛上伺服器嘅設定檔。原有資料夾會保留，相同路徑會跳過。需要權限嘅會再開系統選擇器。</string>
+    <string name="import_mpc_empty">呢份匯出入面冇設定檔。</string>
+    <string name="import_mpc_parse_error">讀唔到 MultiProfileCam 設定。請揀匯出嘅 JSON。</string>
+    <string name="import_mpc_read_error">無法讀取所選檔案。</string>
+    <string name="import_mpc_mount">掛載所選</string>
+    <string name="import_mpc_ready">可以直接掛載</string>
+    <string name="import_mpc_needs_permission">需要資料夾權限</string>
+    <string name="import_mpc_private">私人儲存，呢個 App 讀唔到</string>
+    <string name="import_mpc_private_hint">私人目錄通常喺 MultiProfileCam 自己嘅 Android/data。其他 App 讀唔到，亦唔會改掛去公開 Documents。可以剔選之後自己揀資料夾。</string>
+    <string name="import_mpc_duplicate">同「%1$s」係同一個資料夾</string>
+    <string name="import_mpc_already">已經掛載咗</string>
+    <string name="import_mpc_unusable">無法解析呢個路徑</string>
+    <string name="import_mpc_none">未有選擇可以掛載嘅設定檔</string>
+    <string name="import_mpc_added">已掛載 %1$d 個資料夾</string>
+    <string name="import_mpc_result">已掛載 %1$d 個，略過 %2$d 個</string>
+    <string name="import_mpc_busy">請先完成而家嘅資料夾選擇</string>
+    <string name="permission_not_kept">無法保留資料夾權限</string>
 </resources>
