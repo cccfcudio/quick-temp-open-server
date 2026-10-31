@@ -149,4 +149,23 @@
     <string name="download_none">Nothing selected</string>
     <string name="download_channel">Downloads</string>
     <string name="download_notification_title">Downloading</string>
+    <string name="import_mpc">Import MultiProfileCam config</string>
+    <string name="import_mpc_title">Import MultiProfileCam profiles</string>
+    <string name="import_mpc_hint">Choose profiles to mount. Existing folders stay, and identical paths are skipped. Profiles that need access open the system folder picker.</string>
+    <string name="import_mpc_empty">This export has no profiles.</string>
+    <string name="import_mpc_parse_error">Could not read this MultiProfileCam export. Choose the JSON file from Export configuration.</string>
+    <string name="import_mpc_read_error">Could not read the selected file.</string>
+    <string name="import_mpc_mount">Mount selected</string>
+    <string name="import_mpc_ready">Ready to mount</string>
+    <string name="import_mpc_needs_permission">Needs folder permission</string>
+    <string name="import_mpc_private">Private storage, this app cannot read it</string>
+    <string name="import_mpc_private_hint">Private folders usually live in MultiProfileCam’s own Android/data directory. Other apps cannot read them, and this app will not mount the public Documents folder instead. Select the profile if you want to pick a folder yourself.</string>
+    <string name="import_mpc_duplicate">Same folder as “%1$s”</string>
+    <string name="import_mpc_already">Already mounted</string>
+    <string name="import_mpc_unusable">No usable path</string>
+    <string name="import_mpc_none">No profiles selected</string>
+    <string name="import_mpc_added">Mounted %1$d folder(s)</string>
+    <string name="import_mpc_result">Mounted %1$d, skipped %2$d</string>
+    <string name="import_mpc_busy">Finish the current folder picker first</string>
+    <string name="permission_not_kept">Could not keep folder permission</string>
 </resources>
