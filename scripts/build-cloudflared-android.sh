@@ -15,7 +15,7 @@ if [[ -x "$HOME/.local/go/bin/go" ]]; then
 elif command -v go >/dev/null 2>&1; then
   GO="$(command -v go)"
 else
-  echo "需要 Go 1.27 或更新。可從 https://go.dev/dl/ 安裝。" >&2
+  echo "需要 Go（cloudflared 目前要求 Go 1.27+）。可從 https://go.dev/dl/ 安裝，或設 GOTOOLCHAIN=auto 讓 Go 自動下載工具鏈。" >&2
   exit 1
 fi
 
@@ -32,7 +32,7 @@ mkdir -p "$(dirname "$OUT")"
 export CGO_ENABLED=0
 export GOOS=android
 export GOARCH=arm64
-export GOTOOLCHAIN=local
+export GOTOOLCHAIN="${GOTOOLCHAIN:-auto}"
 export GOMAXPROCS="${GOMAXPROCS:-2}"
 export GOMEMLIMIT="${GOMEMLIMIT:-2800MiB}"
 
