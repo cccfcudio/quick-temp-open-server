@@ -104,7 +104,9 @@ Windows：
 gradlew.bat :app:assembleDebug
 ```
 
-輸出：`app/build/outputs/apk/debug/quick-temp-open-server-0.1.8-debug.apk`。可以再複製去 `artifacts/`（呢個目錄入面嘅 APK 唔入 git）。
+輸出：`app/build/outputs/apk/debug/quick-temp-open-server-<版本>-debug.apk`。可以再複製去 `artifacts/`（呢個目錄入面嘅 APK 唔入 git）。
+
+`./gradlew :app:assembleDebug` 會喺打包前自動執行 `ensureCloudflared`（缺少 `libcloudflared.so` 時會跑 `scripts/build-cloudflared-android.sh`）。**GitHub Release 嘅 APK 必須包含 cloudflared**，否則 Try Cloudflare 會顯示「找不到 cloudflared」。
 
 單元測試同本機試伺服器唔使 Android SDK：
 
@@ -125,7 +127,7 @@ scripts/build-cloudflared-android.sh
 
 `app/src/main/jniLibs/arm64-v8a/libcloudflared.so`
 
-呢個 `.so` 同 `app/src/main/assets/cloudflared-build.txt` 都唔入 git。未編譯都仍然可以 `assembleDebug`，只係 App 入面會話搵唔到 cloudflared。
+呢個 `.so` 同 `app/src/main/assets/cloudflared-build.txt` 都唔入 git。Gradle 打包前會自動編譯（需要 Go 1.27+ 同網絡）；亦可手動跑 `scripts/build-cloudflared-android.sh`。
 
 官方 `cloudflared-linux-arm64` 係靜態連結嘅 non-PIE `ET_EXEC`，Android 唔會執行，所以唔好直接放進套件。
 

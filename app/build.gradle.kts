@@ -12,8 +12,8 @@ android {
         applicationId = "app.openshelf"
         minSdk = 26
         targetSdk = 35
-        versionCode = 12
-        versionName = "0.1.11"
+        versionCode = 13
+        versionName = "0.1.12"
         ndk {
             abiFilters += listOf("arm64-v8a")
         }
@@ -52,7 +52,7 @@ android {
 }
 
 base {
-    archivesName.set("quick-temp-open-server-0.1.11")
+    archivesName.set("quick-temp-open-server-0.1.12")
 }
 
 dependencies {
@@ -73,20 +73,39 @@ dependencies {
     debugImplementation(libs.compose.ui.tooling)
 }
 
-tasks.register("prepareCloudflared") {
-    val binary = layout.projectDirectory.file("src/main/jniLibs/arm64-v8a/libcloudflared.so")
+val cloudflaredBinary =
+    layout.projectDirectory.file("src/main/jniLibs/arm64-v8a/libcloudflared.so")
+val cloudflaredBuildInfo =
+    layout.projectDirectory.file("src/main/assets/cloudflared-build.txt")
+
+tasks.register<Exec>("buildCloudflared") {
+    group = "build"
+    description = "Compile libcloudflared.so for Android arm64 (Try Cloudflare)."
+    inputs.file(rootProject.file("third_party/CLOUDFLARED_VERSION"))
+    inputs.file(rootProject.file("third_party/android_dns.go"))
+    inputs.file(rootProject.file("scripts/build-cloudflared-android.sh"))
+    outputs.file(cloudflaredBinary)
+    outputs.file(cloudflaredBuildInfo)
+    val force = providers.gradleProperty("rebuildCloudflared").isPresent
+    onlyIf { force || !cloudflaredBinary.asFile.exists() }
+    workingDir = rootProject.projectDir
+    commandLine("bash", "scripts/build-cloudflared-android.sh")
+}
+
+tasks.register("ensureCloudflared") {
+    group = "verification"
+    description = "Ensure libcloudflared.so exists before packaging the APK."
+    dependsOn("buildCloudflared")
     doLast {
-        if (!binary.asFile.exists()) {
-            logger.warn(
-                "未找到 libcloudflared.so。APK 仍然可以建立，但 Try Cloudflare 會提示缺少二進位。" +
-                    " 請先執行 scripts/build-cloudflared-android.sh。",
-            )
+        check(cloudflaredBinary.asFile.isFile) {
+            "libcloudflared.so is missing after buildCloudflared. Install Go 1.27+ and run " +
+                "scripts/build-cloudflared-android.sh, or retry with a network for GOTOOLCHAIN=auto."
         }
     }
 }
 
 afterEvaluate {
     tasks.named("preBuild").configure {
-        dependsOn("prepareCloudflared")
+        dependsOn("ensureCloudflared")
     }
 }
